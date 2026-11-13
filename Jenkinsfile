@@ -28,7 +28,7 @@ pipeline {
       }
     }
     stage('Smoke Test') {
-      steps { sh './scripts/smoke-test.sh' }
+      steps { sh 'bash ./scripts/smoke-test.sh' }
     }
   }
   post {

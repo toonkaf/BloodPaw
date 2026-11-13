@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client.js";
-import CaseCard from "../components/CaseCard.jsx";
+import { ErrorList } from "../components/Alerts.jsx";
+import { CaseCard } from "../components/Cards.jsx";
 
 const STEPS = ["เข้าสู่ระบบ", "ลงทะเบียนฮีโร่/ประกาศเคสด่วน", "ตรวจสอบหน้าโปรไฟล์", "ติดต่อยืนยัน"];
 
-export default function HomeView({ user, go }) {
-  const [stats, setStats] = useState({ cases_searching: 0, heroes_available: 0, cases_closed: 0 });
+export default function HomeView({ go }) {
+  const [stats, setStats] = useState({ cases_searching: 0, heroes_available: 0, cases_success: 0 });
   const [cases, setCases] = useState([]);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
 
   useEffect(() => {
-    Promise.all([api.stats(), api.cases({ status: "searching", limit: 3 })])
+    Promise.all([api.stats(), api.cases({ sort: "latest", limit: 3 })])
       .then(([s, c]) => { setStats(s); setCases(c); })
-      .catch((e) => setError(e.message));
+      .catch((e) => setErrors(e.messages));
   }, []);
 
   return (
@@ -30,15 +31,15 @@ export default function HomeView({ user, go }) {
           <h3>Dashboard</h3>
           <div className="stat red"><span>เคสที่กำลังตามหา</span><span>[ {stats.cases_searching} ]</span></div>
           <div className="stat mint"><span>ฮีโร่ที่พร้อมบริจาค</span><span>[ {stats.heroes_available} ]</span></div>
-          <div className="stat sage"><span>ปิดเคสสำเร็จ</span><span>[ {stats.cases_closed} ]</span></div>
+          <div className="stat sage"><span>ปิดเคสสำเร็จ</span><span>[ {stats.cases_success} ]</span></div>
         </div>
       </section>
-      {error && <div className="alert" role="alert">{error}</div>}
+      <ErrorList messages={errors} />
 
       <h2 className="section-title">เคสด่วนล่าสุด</h2>
       <div className="cards3">
-        {cases.length === 0 && <div className="empty" style={{ gridColumn: "1 / -1" }}>ยังไม่มีเคสที่กำลังตามหา</div>}
-        {cases.map((c) => <CaseCard key={c.id} c={c} user={user} />)}
+        {cases.length === 0 && <div className="empty" style={{ gridColumn: "1 / -1" }}>ยังไม่มีเคสด่วนในขณะนี้</div>}
+        {cases.map((c) => <CaseCard key={c.id} c={c} compact />)}
       </div>
 
       <h2 className="section-title">ใช้งานอย่างไร</h2>

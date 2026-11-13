@@ -3,13 +3,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class RegisterRequest(BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=1, max_length=128)  # ตรวจมาตรฐานรหัสผ่านใน controller
     full_name: str = Field(min_length=1, max_length=120)
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    full_name: str = Field(min_length=1)
+    email: str = Field(min_length=1)
+    password: str = Field(min_length=1)
 
 
 class UserView(BaseModel):

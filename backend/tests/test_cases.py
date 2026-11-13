@@ -1,51 +1,50 @@
-from tests.conftest import CASE, make_user
+from tests.conftest import add_case, case_payload, make_user
 
 
 def test_create_case_requires_login(client):
-    assert client.post("/api/cases", json=CASE).status_code == 401
+    assert client.post("/api/cases", json=case_payload()).status_code == 401
 
 
-def test_create_and_list_case(client):
+def test_public_case_never_exposes_phone(client):
     h = make_user(client)
-    r = client.post("/api/cases", json=CASE, headers=h)
-    assert r.status_code == 201 and r.json()["status"] == "searching"
-    assert len(client.get("/api/cases?status=searching").json()) == 1
+    add_case(client, h)
+    row = client.get("/api/cases").json()[0]
+    assert "contact_phone" not in row and "owner_id" not in row and row["status"] == "searching"
 
 
-def test_invalid_blood_type_for_species_rejected(client):
+def test_blood_type_must_match_species(client):
     h = make_user(client)
-    r = client.post("/api/cases", json={**CASE, "blood_type": "AB"}, headers=h)  # AB เป็นหมู่เลือดแมว
+    r = client.post("/api/cases", json=case_payload(blood_type="AB"), headers=h)
     assert r.status_code == 422
+    assert client.post("/api/cases", json=case_payload(blood_type="ไม่ระบุ"), headers=h).status_code == 201
 
 
-def test_invalid_phone_rejected(client):
+def test_filters_by_hospital_species_blood_urgency(client):
     h = make_user(client)
-    assert client.post("/api/cases", json={**CASE, "contact_phone": "123"}, headers=h).status_code == 422
+    add_case(client, h, hospital="รพ.สัตว์ A", urgency="urgent")
+    add_case(client, h, hospital="รพ.สัตว์ B", urgency="advance", species="cat", blood_type="A")
+    assert len(client.get("/api/cases?hospital=รพ.สัตว์ B").json()) == 1
+    assert len(client.get("/api/cases?species=cat").json()) == 1
+    assert len(client.get("/api/cases?blood_type=DEA 1.2").json()) == 1
+    assert len(client.get("/api/cases?urgency=urgent").json()) == 1
+    assert len(client.get("/api/cases?urgency=critical").json()) == 0
 
 
-def test_contact_hidden_from_anonymous(client):
+def test_sorted_by_urgency_then_newest(client):
     h = make_user(client)
-    client.post("/api/cases", json=CASE, headers=h)
-    assert client.get("/api/cases").json()[0]["contact_phone"] is None
-    assert client.get("/api/cases", headers=h).json()[0]["contact_phone"] == "0812345678"
+    for name, urg in [("a", "advance"), ("b", "critical"), ("c", "urgent"), ("d", "critical")]:
+        add_case(client, h, pet_name=name, urgency=urg)
+    assert [c["pet_name"] for c in client.get("/api/cases").json()] == ["d", "b", "c", "a"]
+    assert [c["pet_name"] for c in client.get("/api/cases?sort=latest&limit=2").json()] == ["d", "c"]
 
 
-def test_critical_cases_listed_first(client):
+def test_invalid_urgency_rejected(client):
     h = make_user(client)
-    client.post("/api/cases", json={**CASE, "pet_name": "normal", "urgency": "normal"}, headers=h)
-    client.post("/api/cases", json={**CASE, "pet_name": "critical", "urgency": "critical"}, headers=h)
-    assert client.get("/api/cases?status=searching").json()[0]["pet_name"] == "critical"
+    assert client.post("/api/cases", json=case_payload(urgency="normal"), headers=h).status_code == 422
 
 
-def test_only_owner_can_close(client):
-    h1, h2 = make_user(client, "a@example.com"), make_user(client, "b@example.com")
-    cid = client.post("/api/cases", json=CASE, headers=h1).json()["id"]
-    assert client.post(f"/api/cases/{cid}/close", headers=h2).status_code == 403
-    assert client.post(f"/api/cases/{cid}/close", headers=h1).json()["status"] == "closed"
-
-
-def test_close_twice_conflicts(client):
+def test_meta_lists_hospitals_from_data(client):
     h = make_user(client)
-    cid = client.post("/api/cases", json=CASE, headers=h).json()["id"]
-    client.post(f"/api/cases/{cid}/close", headers=h)
-    assert client.post(f"/api/cases/{cid}/close", headers=h).status_code == 409
+    add_case(client, h, hospital="รพ.สัตว์ ทดสอบ")
+    meta = client.get("/api/meta").json()
+    assert "รพ.สัตว์ ทดสอบ" in meta["hospitals"] and meta["min_donor_weight"]["dog"] == 30
