@@ -64,7 +64,7 @@ export default function App() {
     <div className="page">
       <Navbar path={path} user={user} go={go} />
       <main className="container">{view}</main>
-      <footer className="footer">SOFTWARE DEVELOPMENT TOOLS AND ENVIRONMENTS (1/2569) : ค่ายสุดท้าย</footer>
+      <footer className="footer"></footer>
     </div>
   );
 }

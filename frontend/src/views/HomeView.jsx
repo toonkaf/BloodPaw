@@ -21,7 +21,7 @@ export default function HomeView({ go }) {
       <section className="home-top">
         <div>
           <h1>ช่วยน้องหาเลือดได้เร็วขึ้น</h1>
-          <p>Devtools : Mini Project Pet Tech</p>
+          <p></p>
           <div className="btn-row">
             <button className="btn" onClick={() => go("/cases/new")}>+ ประกาศเคสด่วน</button>
             <button className="btn" onClick={() => go("/hero")}>ลงทะเบียนฮีโร่</button>
